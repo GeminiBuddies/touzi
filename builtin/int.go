@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"touzi"
 	"touzi/random"
-	"touzi/terr"
 	"unicode"
 	"unicode/utf8"
 )
@@ -74,7 +73,7 @@ func (i *Int) rollIUBits(args []touzi.Argument, format string) (rolled bool, res
 
 	var bits uint64
 	if bits, err = strconv.ParseUint(b, 10, 8); err != nil || bits > 64 {
-		err = terr.InvalidArgument(args, 0)
+		err = touzi.ErrorInvalidArgument(args, 0)
 		return
 	}
 
@@ -107,7 +106,7 @@ func (i *Int) rollMinMaxStep(args []touzi.Argument, format string) (rolled bool,
 
 	for index, arg := range args {
 		if number, ok := arg.AsInt(); !ok {
-			err = terr.InvalidArgument(args, index)
+			err = touzi.ErrorInvalidArgument(args, index)
 			return
 		} else {
 			switch index {
@@ -122,7 +121,7 @@ func (i *Int) rollMinMaxStep(args []touzi.Argument, format string) (rolled bool,
 	}
 
 	if step == 0 {
-		err = terr.InvalidArgument(args, 2)
+		err = touzi.ErrorInvalidArgument(args, 2)
 		return
 	} else if step < 0 {
 		step = -step
@@ -158,6 +157,6 @@ func (i *Int) Roll(args []touzi.Argument, format string) (result touzi.Result, e
 		return
 	}
 
-	err = terr.InvalidArguments(args)
+	err = touzi.ErrorInvalidArguments(args)
 	return
 }

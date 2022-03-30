@@ -1,12 +1,11 @@
-package terr
+package touzi
 
 import (
 	"fmt"
-	"touzi"
 )
 
 type ErrInvalidArgument struct {
-	Arguments []touzi.Argument
+	Arguments []Argument
 	Position  int
 }
 
@@ -14,7 +13,7 @@ func (i *ErrInvalidArgument) Error() string {
 	return fmt.Sprintf("invalid argument at position %d: %s", i.Position, string(i.Arguments[i.Position]))
 }
 
-func InvalidArgument(argument []touzi.Argument, position int) *ErrInvalidArgument {
+func ErrorInvalidArgument(argument []Argument, position int) *ErrInvalidArgument {
 	return &ErrInvalidArgument{
 		Arguments: argument,
 		Position:  position,
@@ -22,14 +21,14 @@ func InvalidArgument(argument []touzi.Argument, position int) *ErrInvalidArgumen
 }
 
 type ErrInvalidArguments struct {
-	Arguments []touzi.Argument
+	Arguments []Argument
 }
 
 func (i *ErrInvalidArguments) Error() string {
 	return fmt.Sprintf("invalid arguments: %v", i.Arguments)
 }
 
-func InvalidArguments(argument []touzi.Argument) *ErrInvalidArguments {
+func ErrorInvalidArguments(argument []Argument) *ErrInvalidArguments {
 	return &ErrInvalidArguments{
 		Arguments: argument,
 	}
@@ -40,10 +39,10 @@ type ErrTouziNotFound struct {
 }
 
 func (i *ErrTouziNotFound) Error() string {
-	return fmt.Sprintf("touzi with prefix %v not found", i.Prefix)
+	return fmt.Sprintf("touzi with prefix '%c' not found", i.Prefix)
 }
 
-func TouziNotFound(prefix rune) *ErrTouziNotFound {
+func ErrorTouziNotFound(prefix rune) *ErrTouziNotFound {
 	return &ErrTouziNotFound{
 		Prefix: prefix,
 	}

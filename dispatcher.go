@@ -1,8 +1,10 @@
 package touzi
 
 import (
+	"strings"
 	"unicode"
 	"unicode/utf8"
+	"unsafe"
 )
 
 type DispatchResult struct {
@@ -35,8 +37,32 @@ func (d *Dispatcher) Register(touzi Touzi) {
 	}
 }
 
-func (d *Dispatcher) Dispatch(request Request) (DispatchResult, error) {
+func (d *Dispatcher) Dispatch(request Request) (result DispatchResult, err error) {
+	result.Request = request
+
 	prefix, prefixLength := utf8.DecodeRuneInString(string(request))
 	body := string(request)[prefixLength:]
+	result.Prefix = prefix
 
+	formatIndex := strings.IndexRune(body, '#')
+	if formatIndex >= 0 {
+		result.Format = body[formatIndex+1:]
+		body = body[:formatIndex]
+	}
+
+	if len(body) > 0 {
+		var args = strings.Split(body, ",")
+		result.Arguments = *(*[]Argument)(unsafe.Pointer(&args))
+	}
+
+	touzi, exists := d.touzi[prefix]
+	if !exists {
+		err = ErrorTouziNotFound(prefix)
+		return
+	}
+
+	result.Touzi = touzi
+	result.Result, err = touzi.Roll(result.Arguments, result.Format)
+
+	return
 }
