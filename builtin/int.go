@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 )
 
-const doc = `
+const docInt = `
 Usage:
 
         d<arguments>[#<format>]
@@ -33,7 +33,7 @@ func (i *Int) Information() touzi.Information {
 		Prefix:        'd',
 		Name:          "int",
 		Description:   "a touzi generating integers",
-		Documentation: doc,
+		Documentation: docInt,
 	}
 }
 

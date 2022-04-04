@@ -2,28 +2,35 @@ package touzi
 
 import (
 	"strings"
+	"touzi/random"
 	"unicode"
 	"unicode/utf8"
 	"unsafe"
 )
 
-type DispatchResult struct {
+type Roll struct {
 	Request   Request
 	Prefix    rune
-	Touzi     Touzi
 	Arguments []Argument
 	Format    string
+	Touzi     Touzi
 	Result    Result
 }
 
-type Dispatcher struct {
-	touzi map[rune]Touzi
+type Cup struct {
+	source random.Source
+	touzi  map[rune]Touzi
 }
 
-func (d *Dispatcher) Register(touzi Touzi) {
-	if d.touzi == nil {
-		d.touzi = make(map[rune]Touzi)
+func NewCup(source random.Source) *Cup {
+	return &Cup{
+		source: source,
+		touzi:  make(map[rune]Touzi),
 	}
+}
+
+func (d *Cup) Add(touzi Touzi) {
+	touzi.InjectSource(d.source)
 
 	prefix := touzi.Information().Prefix
 	d.touzi[prefix] = touzi
@@ -37,22 +44,22 @@ func (d *Dispatcher) Register(touzi Touzi) {
 	}
 }
 
-func (d *Dispatcher) Dispatch(request Request) (result DispatchResult, err error) {
-	result.Request = request
+func (d *Cup) RollOne(request Request) (roll Roll, err error) {
+	roll.Request = request
 
 	prefix, prefixLength := utf8.DecodeRuneInString(string(request))
 	body := string(request)[prefixLength:]
-	result.Prefix = prefix
+	roll.Prefix = prefix
 
 	formatIndex := strings.IndexRune(body, '#')
 	if formatIndex >= 0 {
-		result.Format = body[formatIndex+1:]
+		roll.Format = body[formatIndex+1:]
 		body = body[:formatIndex]
 	}
 
 	if len(body) > 0 {
 		var args = strings.Split(body, ",")
-		result.Arguments = *(*[]Argument)(unsafe.Pointer(&args))
+		roll.Arguments = *(*[]Argument)(unsafe.Pointer(&args))
 	}
 
 	touzi, exists := d.touzi[prefix]
@@ -61,8 +68,8 @@ func (d *Dispatcher) Dispatch(request Request) (result DispatchResult, err error
 		return
 	}
 
-	result.Touzi = touzi
-	result.Result, err = touzi.Roll(result.Arguments, result.Format)
+	roll.Touzi = touzi
+	roll.Result, err = touzi.Roll(roll.Arguments, roll.Format)
 
 	return
 }
