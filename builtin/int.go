@@ -1,7 +1,6 @@
 package builtin
 
 import (
-	"fmt"
 	"strconv"
 	"touzi"
 	"touzi/random"
@@ -12,7 +11,7 @@ import (
 const docInt = `
 Usage:
 
-        d<arguments>[#<format>]
+        d<arguments>
 
 <arguments> can be one of the following:
 
@@ -21,7 +20,7 @@ Usage:
 	<min>,<max>,<step>
 	i<bits> or u<bits>
 
-The default <min> and <step> is 1.
+The default <max> is 6. The default <min> and <step> is 1.
 `
 
 type Int struct {
@@ -41,23 +40,7 @@ func (i *Int) InjectSource(source random.Source) {
 	i.source = source
 }
 
-func prepareFormatString(format string) string {
-	if format == "" {
-		return "%d"
-	}
-
-	return "%" + format
-}
-
-func formatInt(format string, value int64) touzi.Result {
-	return touzi.Result(fmt.Sprintf(prepareFormatString(format), value))
-}
-
-func formatUint(format string, value uint64) touzi.Result {
-	return touzi.Result(fmt.Sprintf(prepareFormatString(format), value))
-}
-
-func (i *Int) rollIUBits(args []touzi.Argument, format string) (rolled bool, result touzi.Result, err error) {
+func (i *Int) rollIUBits(args []touzi.Argument) (rolled bool, result touzi.Result, err error) {
 	if len(args) != 1 || args[0] == "" {
 		return
 	}
@@ -81,15 +64,15 @@ func (i *Int) rollIUBits(args []touzi.Argument, format string) (rolled bool, res
 	rand := i.source.Next()
 
 	if c == 'i' {
-		result = formatInt(format, int64(rand)>>shift)
+		result = int64(rand) >> shift
 	} else {
-		result = formatUint(format, rand>>shift)
+		result = rand >> shift
 	}
 
 	return
 }
 
-func (i *Int) rollMinMaxStep(args []touzi.Argument, format string) (rolled bool, result touzi.Result, err error) {
+func (i *Int) rollMinMaxStep(args []touzi.Argument) (rolled bool, result touzi.Result, err error) {
 	if len(args) > 3 {
 		return
 	}
@@ -100,7 +83,6 @@ func (i *Int) rollMinMaxStep(args []touzi.Argument, format string) (rolled bool,
 		start int64 = 6
 		end   int64 = 1
 		step  int64 = 1
-		r     int64
 		ustep uint64
 	)
 
@@ -133,27 +115,26 @@ func (i *Int) rollMinMaxStep(args []touzi.Argument, format string) (rolled bool,
 			start, end = end, start
 		}
 
-		r = start + int64(random.Bounded(i.source, uint64(end)-uint64(start)+1))
+		result = start + int64(random.Bounded(i.source, uint64(end)-uint64(start)+1))
 	} else {
 		if start <= end {
-			r = start + int64(random.Bounded(i.source, (uint64(end)-uint64(start))/ustep+1)*ustep)
+			result = start + int64(random.Bounded(i.source, (uint64(end)-uint64(start))/ustep+1)*ustep)
 		} else {
-			r = start - int64(random.Bounded(i.source, (uint64(start)-uint64(end))/ustep+1)*ustep)
+			result = start - int64(random.Bounded(i.source, (uint64(start)-uint64(end))/ustep+1)*ustep)
 		}
 	}
 
-	result = formatInt(format, r)
 	return
 }
 
-func (i *Int) Roll(args []touzi.Argument, format string) (result touzi.Result, err error) {
+func (i *Int) Roll(args []touzi.Argument) (result touzi.Result, err error) {
 	var rolled bool
 
-	if rolled, result, err = i.rollIUBits(args, format); rolled {
+	if rolled, result, err = i.rollIUBits(args); rolled {
 		return
 	}
 
-	if rolled, result, err = i.rollMinMaxStep(args, format); rolled {
+	if rolled, result, err = i.rollMinMaxStep(args); rolled {
 		return
 	}
 

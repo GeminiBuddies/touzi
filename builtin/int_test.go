@@ -10,12 +10,14 @@ import (
 
 func distribution(a *Int, count uint64, args []touzi.Argument, format string) {
 	dist := make(map[string]uint64)
+	formatter := &touzi.DefaultFormatter{}
 
 	for i := uint64(0); i < count; i += 1 {
-		if result, err := a.Roll(args, format); err != nil {
+		if result, err := a.Roll(args); err != nil {
 			panic(err)
 		} else {
-			dist[string(result)] += 1
+			str := formatter.Format(result, format)
+			dist[str] += 1
 		}
 	}
 
@@ -37,4 +39,5 @@ func TestInt_Roll(t *testing.T) {
 	}
 
 	distribution(a, 1048576*16, []touzi.Argument{"u1"}, "")
+	distribution(a, 1048576*16, []touzi.Argument{"i6"}, "##04x")
 }

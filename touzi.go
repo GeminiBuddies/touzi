@@ -33,7 +33,7 @@ func (p Argument) AsString() string {
 }
 
 // Result result
-type Result string
+type Result interface{}
 
 // Information about a Touzi
 type Information struct {
@@ -47,5 +47,5 @@ type Information struct {
 type Touzi interface {
 	Information() Information
 	InjectSource(source random.Source)
-	Roll(args []Argument, format string) (result Result, err error)
+	Roll(args []Argument) (result Result, err error)
 }

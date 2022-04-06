@@ -30,20 +30,20 @@ func render(w prompt.ConsoleWriter, index int, roll touzi.Roll, err error) {
 	} else {
 		w.SetColor(prompt.DarkGreen, prompt.DefaultColor, false)
 	}
-	w.WriteStr(string(roll.Prefix))
+	w.WriteStr(string(roll.Request.Prefix))
 
 	// print arguments
-	if len(roll.Arguments) > 0 {
+	if len(roll.Request.Arguments) > 0 {
 		if argumentsError {
 			w.SetColor(prompt.Red, prompt.DefaultColor, true)
-			w.WriteStr(strings.Join(*(*[]string)(unsafe.Pointer(&roll.Arguments)), ","))
+			w.WriteStr(strings.Join(*(*[]string)(unsafe.Pointer(&roll.Request.Arguments)), ","))
 		} else {
 			invalidArgumentAt := -1
 			if argumentError {
 				invalidArgumentAt = err.(*touzi.ErrInvalidArgument).Position
 			}
 
-			for argIndex, arg := range roll.Arguments {
+			for argIndex, arg := range roll.Request.Arguments {
 				if argIndex > 0 {
 					w.SetColor(prompt.DarkGray, prompt.DefaultColor, false)
 					w.WriteStr(",")
@@ -60,11 +60,11 @@ func render(w prompt.ConsoleWriter, index int, roll touzi.Roll, err error) {
 	}
 
 	// print format
-	if roll.Format != "" {
+	if roll.Request.Format != "" {
 		w.SetColor(prompt.DarkGray, prompt.DefaultColor, false)
 		w.WriteStr("#")
 		w.SetColor(prompt.DefaultColor, prompt.DefaultColor, false)
-		w.WriteStr(roll.Format)
+		w.WriteStr(roll.Request.Format)
 	}
 
 	// print result or error message
@@ -72,7 +72,7 @@ func render(w prompt.ConsoleWriter, index int, roll touzi.Roll, err error) {
 		w.SetColor(prompt.DarkGray, prompt.DefaultColor, false)
 		w.WriteStr(" = ")
 		w.SetColor(prompt.DefaultColor, prompt.DefaultColor, false)
-		w.WriteStr(fmt.Sprintf("%s\n", roll.Result))
+		w.WriteStr(fmt.Sprintf("%s\n", roll.FormattedResult))
 	} else {
 		w.SetColor(prompt.Red, prompt.DefaultColor, false)
 		w.WriteStr(fmt.Sprintf(" : %v\n", err))
@@ -81,17 +81,19 @@ func render(w prompt.ConsoleWriter, index int, roll touzi.Roll, err error) {
 	w.SetColor(prompt.DefaultColor, prompt.DefaultColor, false)
 }
 
-func executor(w prompt.ConsoleWriter) func(string) {
-	cup := touzi.NewCup(pcg.New())
+func executor(w prompt.ConsoleWriter, index *int) func(string) {
+	cup := touzi.NewCup(pcg.New(), &touzi.DefaultFormatter{},
+		&builtin.Int{},
+		&builtin.Coin{},
+		&builtin.Bin{},
+	)
 
-	cup.Add(&builtin.Int{})
-	cup.Add(&builtin.Coin{})
-
-	return func(s string) {
-		for index, r := range touzi.SplitRequests(s) {
+	return func(line string) {
+		for _, r := range touzi.SplitAndParseRequests(line) {
 			roll, err := cup.RollOne(r)
+			render(w, *index, roll, err)
 
-			render(w, index, roll, err)
+			*index += 1
 		}
 
 		_ = w.Flush()
@@ -104,15 +106,19 @@ func completer() func(prompt.Document) []prompt.Suggest {
 	}
 }
 
+func prefix(index *int) func() (string, bool) {
+	return func() (prefix string, useLivePrefix bool) {
+		return fmt.Sprintf("[%d] ", *index), true
+	}
+}
+
 func main() {
 	w := prompt.NewStdoutWriter()
+	index := 0
 
 	prompt.New(
-		executor(w),
+		executor(w, &index),
 		completer(),
-		// prompt.OptionPrefix(">>> "),
-		prompt.OptionLivePrefix(func() (prefix string, useLivePrefix bool) {
-			return "[0] ", true
-		}),
+		prompt.OptionLivePrefix(prefix(&index)),
 	).Run()
 }

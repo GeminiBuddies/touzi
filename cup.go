@@ -1,75 +1,64 @@
 package touzi
 
 import (
-	"strings"
 	"touzi/random"
 	"unicode"
-	"unicode/utf8"
-	"unsafe"
 )
 
 type Roll struct {
-	Request   Request
-	Prefix    rune
-	Arguments []Argument
-	Format    string
-	Touzi     Touzi
-	Result    Result
+	Request         Request
+	Touzi           Touzi
+	Result          Result
+	FormattedResult string
 }
 
 type Cup struct {
-	source random.Source
-	touzi  map[rune]Touzi
+	source    random.Source
+	touzi     map[rune]Touzi
+	formatter Formatter
 }
 
-func NewCup(source random.Source) *Cup {
-	return &Cup{
-		source: source,
-		touzi:  make(map[rune]Touzi),
+func NewCup(source random.Source, formatter Formatter, touzi ...Touzi) *Cup {
+	c := &Cup{
+		source:    source,
+		touzi:     make(map[rune]Touzi),
+		formatter: formatter,
 	}
+
+	for _, t := range touzi {
+		t.InjectSource(c.source)
+
+		prefix := t.Information().Prefix
+		c.touzi[prefix] = t
+
+		if lower := unicode.ToLower(prefix); lower != prefix {
+			c.touzi[lower] = t
+		}
+
+		if upper := unicode.ToUpper(prefix); upper != prefix {
+			c.touzi[upper] = t
+		}
+	}
+
+	return c
 }
 
-func (d *Cup) Add(touzi Touzi) {
-	touzi.InjectSource(d.source)
-
-	prefix := touzi.Information().Prefix
-	d.touzi[prefix] = touzi
-
-	if lower := unicode.ToLower(prefix); lower != prefix {
-		d.touzi[lower] = touzi
-	}
-
-	if upper := unicode.ToUpper(prefix); upper != prefix {
-		d.touzi[upper] = touzi
-	}
-}
-
-func (d *Cup) RollOne(request Request) (roll Roll, err error) {
+func (c *Cup) RollOne(request Request) (roll Roll, err error) {
 	roll.Request = request
 
-	prefix, prefixLength := utf8.DecodeRuneInString(string(request))
-	body := string(request)[prefixLength:]
-	roll.Prefix = prefix
-
-	formatIndex := strings.IndexRune(body, '#')
-	if formatIndex >= 0 {
-		roll.Format = body[formatIndex+1:]
-		body = body[:formatIndex]
-	}
-
-	if len(body) > 0 {
-		var args = strings.Split(body, ",")
-		roll.Arguments = *(*[]Argument)(unsafe.Pointer(&args))
-	}
-
-	touzi, exists := d.touzi[prefix]
+	touzi, exists := c.touzi[request.Prefix]
 	if !exists {
-		err = ErrorTouziNotFound(prefix)
+		err = ErrorTouziNotFound(request.Prefix)
 		return
 	}
 
 	roll.Touzi = touzi
-	roll.Result, err = touzi.Roll(roll.Arguments, roll.Format)
+	roll.Result, err = touzi.Roll(request.Arguments)
 
+	if err != nil {
+		return
+	}
+
+	roll.FormattedResult = c.formatter.Format(roll.Result, roll.Request.Format)
 	return
 }

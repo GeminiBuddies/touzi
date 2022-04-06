@@ -29,14 +29,10 @@ func (c *Coin) InjectSource(source random.Source) {
 	c.source = source
 }
 
-func (c *Coin) Roll(args []touzi.Argument, format string) (result touzi.Result, err error) {
+func (c *Coin) Roll(args []touzi.Argument) (result touzi.Result, err error) {
 	if len(args) > 0 {
 		return "", touzi.ErrorInvalidArguments(args)
 	}
 
-	if c.source.Next()&1 == 0 {
-		return "true", nil
-	} else {
-		return "false", nil
-	}
+	return c.source.Next()&1 == 0, nil
 }
